@@ -1,0 +1,11 @@
+user:
+  email: sonal.patel@helmholtz-berlin.de
+  name: Sonal
+sample:
+  name: "My Wonderful Sample"
+  rotation_angle: 0.0
+process:
+  program: bluesky_v0.1.1
+  note: 
+    description: "This program does the azimuthal integration of the data acquired at myspot"
+     
