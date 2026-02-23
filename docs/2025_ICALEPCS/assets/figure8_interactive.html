@@ -173,6 +173,32 @@
     padding-left: 14px;
   }
 
+  .pin-badge {
+    display: none;
+    align-items: center;
+    gap: 5px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 3px 8px;
+    width: fit-content;
+  }
+  .pin-badge::before {
+    content: '📌';
+    font-size: 10px;
+  }
+
+  .info-hint {
+    font-size: 11px;
+    color: var(--text-secondary);
+    opacity: 0.6;
+    margin-top: 4px;
+  }
+
   /* Legend */
   .legend {
     display: flex;
@@ -205,10 +231,25 @@
     font-size: 12px;
     color: var(--text-secondary);
   }
-
   .legend-text strong {
     color: var(--text-primary);
     font-weight: 600;
+  }
+
+  .legend-link {
+    display: inline-flex;
+    align-items: center;
+    color: var(--text-secondary);
+    opacity: 0;
+    transition: opacity 0.2s, color 0.2s;
+    text-decoration: none;
+    margin-left: 4px;
+    font-size: 12px;
+    line-height: 1;
+  }
+  .legend-item:hover .legend-link {
+    opacity: 1;
+    color: var(--accent);
   }
 
   /* arc hover */
@@ -251,9 +292,13 @@
   <div id="info-panel">
     <div class="info-default">
       ← Hover over a segment<br>to see details about the<br>NeXus application definition<br>and beamline count.
+      <p class="info-hint" style="margin-top:10px;">Click any segment to pin the info.</p>
     </div>
     <div class="info-content" id="info-dyn">
-      <div class="info-family-tag" id="info-tag"></div>
+      <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+        <div class="info-family-tag" id="info-tag"></div>
+        <div class="pin-badge" id="pin-badge">pinned · click to unpin</div>
+      </div>
       <div class="info-name" id="info-name"></div>
       <div class="info-beamlines">
         <div class="info-count" id="info-count"></div>
@@ -293,7 +338,7 @@ const families = [
     id: "NXxrd",
     label: "NXxrd",
     color: "#9b59b6",
-    nexusUrl: "https://manual.nexusformat.org/classes/applications/NXmonopd.html",
+    nexusUrl: "https://manual.nexusformat.org/classes/contributed_definitions/NXxrd.html",
     desc: "X-ray Diffraction application definitions. Covers powder and single-crystal diffraction techniques for crystallographic analysis.",
     children: [
       { id: "PowderDiffraction", label: "Powder Diffraction", count: 2, desc: "Powder X-ray diffraction for phase identification and crystal structure determination." },
@@ -405,9 +450,9 @@ famG.selectAll("path")
     .attr("fill", d => d.color)
     .attr("stroke", "#0d1117")
     .attr("stroke-width", 2)
-    .on("mouseenter", (ev, d) => onHoverFamily(d))
+    .on("mouseenter", (ev, d) => onHoverFamily(d, false))
     .on("mouseleave", onLeave)
-    .on("click", (ev, d) => onHoverFamily(d));
+    .on("click", (ev, d) => onHoverFamily(d, true));
 
 // Family labels
 famG.selectAll("text.fam-label")
@@ -441,9 +486,9 @@ techG.selectAll("path")
     .attr("fill", d => d.color)
     .attr("stroke", "#0d1117")
     .attr("stroke-width", 1.5)
-    .on("mouseenter", (ev, d) => onHoverTech(d))
+    .on("mouseenter", (ev, d) => onHoverTech(d, false))
     .on("mouseleave", onLeave)
-    .on("click", (ev, d) => onHoverTech(d));
+    .on("click", (ev, d) => onHoverTech(d, true));
 
 // Tech labels — positioned at arc midpoint, rotated tangentially
 techArcs.forEach(d => {
@@ -483,14 +528,16 @@ techArcs.forEach(d => {
 });
 
 // ── Info panel interactions ───────────────────────────────────────────────────
-function onHoverFamily(d) {
+let pinned = null; // holds the currently pinned datum, or null
+
+function onHoverFamily(d, isClick = false) {
+  if (pinned && !isClick) return; // don't override a pin on hover
   dimAll();
-  // highlight all arcs of this family
   d3.selectAll("path.family-arc").filter(a => a.id === d.id).classed("highlighted", true).classed("dimmed", false);
   d3.selectAll("path.tech-arc").filter(a => a.family.id === d.id).classed("highlighted", true).classed("dimmed", false);
-
   centerLabel.text(d.label);
-
+  const isTogglingOff = isClick && pinned?.id === d.id;
+  if (isClick) pinned = isTogglingOff ? null : d;
   showPanel({
     tag: "NeXus Family",
     tagColor: d.color,
@@ -500,16 +547,19 @@ function onHoverFamily(d) {
     link: d.nexusUrl,
     linkText: `→ NeXus docs: ${d.id}`,
     desc: d.desc,
+    isPinned: !!pinned,
   });
+  if (isTogglingOff) onLeave();
 }
 
-function onHoverTech(d) {
+function onHoverTech(d, isClick = false) {
+  if (pinned && !isClick) return; // don't override a pin on hover
   dimAll();
   d3.selectAll("path.family-arc").filter(a => a.id === d.family.id).classed("highlighted", true).classed("dimmed", false);
   d3.selectAll("path.tech-arc").filter(a => a.id === d.id).classed("highlighted", true).classed("dimmed", false);
-
   centerLabel.text(d.count);
-
+  const isTogglingOff = isClick && pinned?.id === d.id;
+  if (isClick) pinned = isTogglingOff ? null : d;
   showPanel({
     tag: d.family.label,
     tagColor: d.family.color,
@@ -519,10 +569,13 @@ function onHoverTech(d) {
     link: d.family.nexusUrl,
     linkText: `→ NeXus docs: ${d.family.id}`,
     desc: d.desc,
+    isPinned: !!pinned,
   });
+  if (isTogglingOff) onLeave();
 }
 
 function onLeave() {
+  if (pinned) return; // keep highlight if something is pinned
   d3.selectAll("path.arc").classed("dimmed", false).classed("highlighted", false);
   centerLabel.text("BESSY-II");
   document.querySelector(".info-default").style.display = "block";
@@ -533,7 +586,7 @@ function dimAll() {
   d3.selectAll("path.arc").classed("dimmed", true).classed("highlighted", false);
 }
 
-function showPanel({ tag, tagColor, name, count, labelText, link, linkText, desc }) {
+function showPanel({ tag, tagColor, name, count, labelText, link, linkText, desc, isPinned }) {
   document.querySelector(".info-default").style.display = "none";
   const dyn = document.getElementById("info-dyn");
   dyn.classList.add("active");
@@ -551,7 +604,31 @@ function showPanel({ tag, tagColor, name, count, labelText, link, linkText, desc
   document.getElementById("info-link").href = link;
   document.getElementById("info-link").textContent = linkText;
   document.getElementById("info-desc").textContent = desc;
+
+  // Pin badge
+  const pinBadge = document.getElementById("pin-badge");
+  if (isPinned) {
+    pinBadge.style.display = "inline-flex";
+  } else {
+    pinBadge.style.display = "none";
+  }
 }
+
+// ── Unpin on Escape or clicking the SVG background ───────────────────────────
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape" && pinned) {
+    pinned = null;
+    onLeave();
+  }
+});
+
+svg.on("click", (ev) => {
+  // only fire if click landed on the SVG itself (not on an arc)
+  if (ev.target.tagName === "svg" && pinned) {
+    pinned = null;
+    onLeave();
+  }
+});
 
 // ── Legend ────────────────────────────────────────────────────────────────────
 const legendEl = document.getElementById("legend");
@@ -561,9 +638,17 @@ families.forEach(fam => {
   item.innerHTML = `
     <div class="legend-dot" style="background:${fam.color}"></div>
     <div class="legend-text"><strong>${fam.label}</strong> · ${fam.total} beamlines</div>
+    <a class="legend-link" href="${fam.nexusUrl}" target="_blank" rel="noopener" title="Open NeXus docs for ${fam.label}" onclick="event.stopPropagation()">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+        <polyline points="15 3 21 3 21 9"/>
+        <line x1="10" y1="14" x2="21" y2="3"/>
+      </svg>
+    </a>
   `;
-  item.addEventListener("mouseenter", () => onHoverFamily(fam));
+  item.addEventListener("mouseenter", () => onHoverFamily(fam, false));
   item.addEventListener("mouseleave", onLeave);
+  item.addEventListener("click", () => onHoverFamily(fam, true));
   legendEl.appendChild(item);
 });
 </script>
