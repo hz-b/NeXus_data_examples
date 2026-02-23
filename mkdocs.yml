@@ -1,0 +1,32 @@
+site_name: NeXus Data Examples — BESSY II
+site_url: https://hz-b.github.io/NeXus_data_examples/
+repo_url: https://github.com/hz-b/NeXus_data_examples
+repo_name: hz-b/NeXus_data_examples
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - toc.integrate
+    - content.code.copy
+
+nav:
+  - Home: index.md
+  - ICALEPCS 2025:
+    - Overview: 2025_ICALEPCS/index.md
+    - Interactive Figures: 2025_ICALEPCS/interactive-figures.md
+
+markdown_extensions:
+  - toc:
+      permalink: true
+
