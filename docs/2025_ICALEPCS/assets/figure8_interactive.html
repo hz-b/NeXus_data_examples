@@ -450,9 +450,9 @@ famG.selectAll("path")
     .attr("fill", d => d.color)
     .attr("stroke", "#0d1117")
     .attr("stroke-width", 2)
-    .on("mouseenter", (ev, d) => onHoverFamily(d, false))
+    .on("mouseenter", (ev, d) => onHoverFamily(d))
     .on("mouseleave", onLeave)
-    .on("click", (ev, d) => onHoverFamily(d, true));
+    .on("click", (ev, d) => onClickFamily(d));
 
 // Family labels
 famG.selectAll("text.fam-label")
@@ -486,9 +486,9 @@ techG.selectAll("path")
     .attr("fill", d => d.color)
     .attr("stroke", "#0d1117")
     .attr("stroke-width", 1.5)
-    .on("mouseenter", (ev, d) => onHoverTech(d, false))
+    .on("mouseenter", (ev, d) => onHoverTech(d))
     .on("mouseleave", onLeave)
-    .on("click", (ev, d) => onHoverTech(d, true));
+    .on("click", (ev, d) => onClickTech(d));
 
 // Tech labels — positioned at arc midpoint, rotated tangentially
 techArcs.forEach(d => {
@@ -528,68 +528,80 @@ techArcs.forEach(d => {
 });
 
 // ── Info panel interactions ───────────────────────────────────────────────────
-let pinned = null; // holds the currently pinned datum, or null
+let pinned = null; // id of the pinned datum, or null
 
-function onHoverFamily(d, isClick = false) {
-  if (pinned && !isClick) return; // don't override a pin on hover
-  dimAll();
-  d3.selectAll("path.family-arc").filter(a => a.id === d.id).classed("highlighted", true).classed("dimmed", false);
-  d3.selectAll("path.tech-arc").filter(a => a.family.id === d.id).classed("highlighted", true).classed("dimmed", false);
-  centerLabel.text(d.label);
-  const isTogglingOff = isClick && pinned?.id === d.id;
-  if (isClick) pinned = isTogglingOff ? null : d;
-  showPanel({
-    tag: "NeXus Family",
-    tagColor: d.color,
-    name: d.label,
-    count: d.total,
-    labelText: `beamlines total\nacross ${d.children.length} technique${d.children.length > 1 ? "s" : ""}`,
-    link: d.nexusUrl,
-    linkText: `→ NeXus docs: ${d.id}`,
-    desc: d.desc,
-    isPinned: !!pinned,
-  });
-  if (isTogglingOff) onLeave();
+function highlight(familyId, techId) {
+  d3.selectAll("path.arc").classed("dimmed", true).classed("highlighted", false);
+  d3.selectAll("path.family-arc").filter(a => a.id === familyId)
+    .classed("highlighted", true).classed("dimmed", false);
+  d3.selectAll("path.tech-arc").filter(a => techId ? a.id === techId : a.family.id === familyId)
+    .classed("highlighted", true).classed("dimmed", false);
 }
 
-function onHoverTech(d, isClick = false) {
-  if (pinned && !isClick) return; // don't override a pin on hover
-  dimAll();
-  d3.selectAll("path.family-arc").filter(a => a.id === d.family.id).classed("highlighted", true).classed("dimmed", false);
-  d3.selectAll("path.tech-arc").filter(a => a.id === d.id).classed("highlighted", true).classed("dimmed", false);
-  centerLabel.text(d.count);
-  const isTogglingOff = isClick && pinned?.id === d.id;
-  if (isClick) pinned = isTogglingOff ? null : d;
-  showPanel({
-    tag: d.family.label,
-    tagColor: d.family.color,
-    name: d.label,
-    count: d.count,
-    labelText: `beamlines\n(${((d.count / grand) * 100).toFixed(1)}% of all)`,
-    link: d.family.nexusUrl,
-    linkText: `→ NeXus docs: ${d.family.id}`,
-    desc: d.desc,
-    isPinned: !!pinned,
-  });
-  if (isTogglingOff) onLeave();
-}
-
-function onLeave() {
-  if (pinned) return; // keep highlight if something is pinned
+function clearHighlight() {
   d3.selectAll("path.arc").classed("dimmed", false).classed("highlighted", false);
   centerLabel.text("BESSY-II");
   document.querySelector(".info-default").style.display = "block";
   document.getElementById("info-dyn").classList.remove("active");
+  document.getElementById("pin-badge").style.display = "none";
 }
 
-function dimAll() {
-  d3.selectAll("path.arc").classed("dimmed", true).classed("highlighted", false);
+function onHoverFamily(d) {
+  if (pinned) return;
+  highlight(d.id, null);
+  centerLabel.text(d.label);
+  showPanel({ tag: "NeXus Family", tagColor: d.color, name: d.label,
+    count: d.total, labelText: `beamlines total\nacross ${d.children.length} technique${d.children.length > 1?"s":""}`,
+    link: d.nexusUrl, linkText: `→ NeXus docs: ${d.id}`, desc: d.desc, isPinned: false });
+}
+
+function onHoverTech(d) {
+  if (pinned) return;
+  highlight(d.family.id, d.id);
+  centerLabel.text(d.count);
+  showPanel({ tag: d.family.label, tagColor: d.family.color, name: d.label,
+    count: d.count, labelText: `beamlines\n(${((d.count/grand)*100).toFixed(1)}% of all)`,
+    link: d.family.nexusUrl, linkText: `→ NeXus docs: ${d.family.id}`, desc: d.desc, isPinned: false });
+}
+
+function onClickFamily(d) {
+  if (pinned === d.id) {
+    // clicking the already-pinned segment → unpin
+    pinned = null;
+    clearHighlight();
+  } else {
+    // pin this segment
+    pinned = d.id;
+    highlight(d.id, null);
+    centerLabel.text(d.label);
+    showPanel({ tag: "NeXus Family", tagColor: d.color, name: d.label,
+      count: d.total, labelText: `beamlines total\nacross ${d.children.length} technique${d.children.length > 1?"s":""}`,
+      link: d.nexusUrl, linkText: `→ NeXus docs: ${d.id}`, desc: d.desc, isPinned: true });
+  }
+}
+
+function onClickTech(d) {
+  if (pinned === d.id) {
+    pinned = null;
+    clearHighlight();
+  } else {
+    pinned = d.id;
+    highlight(d.family.id, d.id);
+    centerLabel.text(d.count);
+    showPanel({ tag: d.family.label, tagColor: d.family.color, name: d.label,
+      count: d.count, labelText: `beamlines\n(${((d.count/grand)*100).toFixed(1)}% of all)`,
+      link: d.family.nexusUrl, linkText: `→ NeXus docs: ${d.family.id}`, desc: d.desc, isPinned: true });
+  }
+}
+
+function onLeave() {
+  if (pinned) return; // don't clear if pinned
+  clearHighlight();
 }
 
 function showPanel({ tag, tagColor, name, count, labelText, link, linkText, desc, isPinned }) {
   document.querySelector(".info-default").style.display = "none";
-  const dyn = document.getElementById("info-dyn");
-  dyn.classList.add("active");
+  document.getElementById("info-dyn").classList.add("active");
 
   const tagEl = document.getElementById("info-tag");
   tagEl.textContent = tag;
@@ -604,30 +616,16 @@ function showPanel({ tag, tagColor, name, count, labelText, link, linkText, desc
   document.getElementById("info-link").href = link;
   document.getElementById("info-link").textContent = linkText;
   document.getElementById("info-desc").textContent = desc;
-
-  // Pin badge
-  const pinBadge = document.getElementById("pin-badge");
-  if (isPinned) {
-    pinBadge.style.display = "inline-flex";
-  } else {
-    pinBadge.style.display = "none";
-  }
+  document.getElementById("pin-badge").style.display = isPinned ? "inline-flex" : "none";
 }
 
 // ── Unpin on Escape or clicking the SVG background ───────────────────────────
 document.addEventListener("keydown", e => {
-  if (e.key === "Escape" && pinned) {
-    pinned = null;
-    onLeave();
-  }
+  if (e.key === "Escape" && pinned) { pinned = null; clearHighlight(); }
 });
 
 svg.on("click", (ev) => {
-  // only fire if click landed on the SVG itself (not on an arc)
-  if (ev.target.tagName === "svg" && pinned) {
-    pinned = null;
-    onLeave();
-  }
+  if (ev.target.tagName === "svg" && pinned) { pinned = null; clearHighlight(); }
 });
 
 // ── Legend ────────────────────────────────────────────────────────────────────
@@ -646,9 +644,9 @@ families.forEach(fam => {
       </svg>
     </a>
   `;
-  item.addEventListener("mouseenter", () => onHoverFamily(fam, false));
+  item.addEventListener("mouseenter", () => onHoverFamily(fam));
   item.addEventListener("mouseleave", onLeave);
-  item.addEventListener("click", () => onHoverFamily(fam, true));
+  item.addEventListener("click", () => onClickFamily(fam));
   legendEl.appendChild(item);
 });
 </script>
