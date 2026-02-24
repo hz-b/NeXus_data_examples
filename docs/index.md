@@ -6,7 +6,7 @@ or press Escape to unpin.
 
 <div style="max-width:100%; overflow:hidden;">
 <iframe
-  src="assets/figure_nexus_mapping.html"
+  src="../2025_ICALEPCS/assets/figure_nexus_mapping.html"
   title="BESSY II experiment te"
   width="100%"
   height="700px"
