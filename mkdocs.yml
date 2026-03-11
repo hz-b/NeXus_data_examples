@@ -31,3 +31,6 @@ markdown_extensions:
       permalink: true
   - md_in_html
 
+extra_javascript:
+  - js/hypothesis_config.js
+  - https://hypothes.is/embed.js
