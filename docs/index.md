@@ -6,7 +6,7 @@ or press Escape to unpin.
 
 <div style="max-width:100%; overflow:hidden;">
 <iframe
-  src="./2025_ICALEPCS/assets/figure_nexus_mapping.html"
+  src="./assets/figure_nexus_mapping.html"
   title="BESSY II experiment te"
   width="100%"
   height="700px"
@@ -18,9 +18,9 @@ or press Escape to unpin.
 ## BESSY-II Experiment Techniques: NeXus Mapping (Detailed version with beamline information)
 
 <iframe
-  src="./2025_ICALEPCS/assets/BESSYII_NeXus_interactive.html"
+  src="./assets/BESSYII_NeXus_interactive.html"
   width="100%"
-  height="620px"
+  height="700px"
   style="border:none; border-radius:8px;"
 ></iframe>
 
