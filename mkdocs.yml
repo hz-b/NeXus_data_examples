@@ -24,7 +24,8 @@ nav:
   - Home: index.md
   - ICALEPCS 2025:
     - Overview: 2025_ICALEPCS/index.md
-    - Interactive Figures: 2025_ICALEPCS/interactive-figures.md
+  - Data Lifecycle Security:
+    - Overview: Data_Lifecycle_Security/index.md 
 
 markdown_extensions:
   - toc:
