@@ -6,7 +6,7 @@ For large-scale research facilities (e.g., synchrotrons or HPC centers), mapping
 <iframe
   src="../assets/RDM_lifecycle_security_sunburst.html"
   width="100%"
-  height="900px"
+  height="940px"
   style="border:none; border-radius:8px;"
 ></iframe>
 

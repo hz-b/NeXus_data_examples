@@ -83,7 +83,17 @@
   .p-title { font-size: 14.5px; font-weight: 600; color: #111; line-height: 1.3; }
   .p-sub   { font-size: 11.5px; color: #888; margin-top: 3px; }
 
-  .p-body { padding: 13px 16px 16px; display: flex; flex-direction: column; gap: 13px; }
+  .p-body {
+    padding: 13px 16px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 13px;
+    max-height: 74vh;
+    overflow-y: auto;
+  }
+  .p-body::-webkit-scrollbar { width: 4px; }
+  .p-body::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 2px; }
+  .p-body::-webkit-scrollbar-thumb { background: #ddd; border-radius: 2px; }
 
   .sec-label {
     font-size: 10.5px;
@@ -114,6 +124,28 @@
   .ctrl-item.highlighted {
     font-weight: 600;
     border-left: 3px solid currentColor;
+  }
+
+  .impl-list { list-style: none; display: flex; flex-direction: column; gap: 4px; }
+
+  .impl-item {
+    font-size: 12px;
+    padding: 5px 9px 5px 22px;
+    background: #f7f8fa;
+    border-radius: 6px;
+    color: #444;
+    line-height: 1.5;
+    position: relative;
+  }
+
+  .impl-item::before {
+    content: "›";
+    position: absolute;
+    left: 8px;
+    top: 5px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #bbb;
   }
 
   .hint {
@@ -202,6 +234,13 @@ const DATA = {
   Plan: {
     color: "#7F77DD",
     obj: "Establish governance, risk assessment, and policies before data is created or collected.",
+    impl: [
+      "Prepare a Data Management Plan (DMP) specifying storage, access control, sharing policy, and preservation strategy.",
+      "Classify the data according to sensitivity (public, restricted, confidential, personal data).",
+      "Define roles and permissions for project members who will access or manage data.",
+      "Conduct a risk assessment to identify potential security threats to research data.",
+      "Ensure compliance with institutional, legal, and ethical regulations (GDPR, funder policies, etc.)."
+    ],
     iso: [
       { code: "A.5",  name: "Information Security Policies" },
       { code: "A.6",  name: "Organization of Information Security" },
@@ -218,6 +257,13 @@ const DATA = {
   Collect: {
     color: "#1D9E75",
     obj: "Ensure secure and trustworthy acquisition of research data.",
+    impl: [
+      "Use authenticated and trusted instruments, sensors, or data acquisition systems.",
+      "Transfer collected data using encrypted communication protocols (TLS, SSH, VPN).",
+      "Assign metadata and unique identifiers to collected datasets.",
+      "Perform integrity checks using checksums or hashes to detect tampering.",
+      "Restrict access to collection systems and devices."
+    ],
     iso: [
       { code: "A.9",  name: "Access Control" },
       { code: "A.10", name: "Cryptography" },
@@ -234,6 +280,13 @@ const DATA = {
   Process: {
     color: "#D85A30",
     obj: "Protect data while being transformed, cleaned, or prepared for analysis.",
+    impl: [
+      "Store working datasets in secured environments with controlled access.",
+      "Encrypt temporary or intermediate files containing sensitive data.",
+      "Apply anonymization or pseudonymization if personal or sensitive data is involved.",
+      "Maintain version control of processed datasets.",
+      "Ensure processing systems are patched and configured securely."
+    ],
     iso: [
       { code: "A.9",  name: "Access Control" },
       { code: "A.10", name: "Cryptography" },
@@ -250,6 +303,13 @@ const DATA = {
   Analyse: {
     color: "#C0407A",
     obj: "Ensure secure analysis environments and maintain traceability of research results.",
+    impl: [
+      "Conduct analysis in controlled computing environments (secure servers, HPC clusters, containers).",
+      "Restrict user privileges according to research roles.",
+      "Maintain audit logs for analysis workflows and data access.",
+      "Use secure version control systems (e.g., Git repositories with authentication).",
+      "Validate analysis tools and software to avoid malicious code or vulnerabilities."
+    ],
     iso: [
       { code: "A.12", name: "Operations Security (logging and monitoring)" },
       { code: "A.9",  name: "Access Control" },
@@ -266,6 +326,13 @@ const DATA = {
   Preserve: {
     color: "#B07010",
     obj: "Ensure long-term integrity, confidentiality, and availability of research data.",
+    impl: [
+      "Store research data in certified or trusted repositories.",
+      "Implement regular automated backups in geographically separate locations.",
+      "Encrypt archived datasets and manage encryption keys securely.",
+      "Perform periodic integrity checks using checksums.",
+      "Maintain metadata and documentation for long-term accessibility."
+    ],
     iso: [
       { code: "A.8",  name: "Asset Management" },
       { code: "A.10", name: "Cryptography" },
@@ -282,6 +349,13 @@ const DATA = {
   Share: {
     color: "#2878CC",
     obj: "Enable controlled dissemination of research data while protecting sensitive information.",
+    impl: [
+      "Publish datasets in trusted repositories with defined access controls.",
+      "Define licensing conditions for dataset reuse (e.g., Creative Commons).",
+      "Authenticate users accessing shared datasets.",
+      "Use encrypted channels when distributing data.",
+      "Ensure sensitive information is removed or anonymized before sharing."
+    ],
     iso: [
       { code: "A.9",  name: "Access Control" },
       { code: "A.13", name: "Communications Security" },
@@ -298,6 +372,13 @@ const DATA = {
   Reuse: {
     color: "#4A8A1A",
     obj: "Ensure reused datasets maintain integrity, provenance, and legal compliance.",
+    impl: [
+      "Verify dataset integrity using checksums or digital signatures before reuse.",
+      "Review metadata and provenance information to understand dataset origin.",
+      "Respect licensing, ethical, and regulatory constraints of the original dataset.",
+      "Track modifications and maintain version history when reusing datasets.",
+      "Document new analyses performed on reused data."
+    ],
     iso: [
       { code: "A.8",  name: "Asset Management" },
       { code: "A.9",  name: "Access Control" },
@@ -529,6 +610,10 @@ function unpinAll() {
   panel.innerHTML = `<div class="hint">📌 Click any segment to pin its security details here.<br><br><strong>Inner</strong> = lifecycle stage<br><strong>Middle</strong> = ISO 27001 controls<br><strong>Outer</strong> = NIST controls</div>`;
 }
 
+function implHTML(list) {
+  return list.map(item => `<li class="impl-item">${item}</li>`).join('');
+}
+
 function ctrlHTML(list, highlightCode, color) {
   return list.map(c => {
     const hl = c.code === highlightCode;
@@ -558,6 +643,10 @@ function showPanel(dd) {
           <div class="obj-text">${d.obj}</div>
         </div>
         <div>
+          <div class="sec-label">Implementation by user</div>
+          <ul class="impl-list">${implHTML(d.impl)}</ul>
+        </div>
+        <div>
           <div class="sec-label">ISO 27001 controls</div>
           <ul class="ctrl-list">${ctrlHTML(d.iso, null, color)}</ul>
         </div>
@@ -581,6 +670,10 @@ function showPanel(dd) {
         <div>
           <div class="sec-label">Stage security objective</div>
           <div class="obj-text">${d.obj}</div>
+        </div>
+        <div>
+          <div class="sec-label">Implementation by user</div>
+          <ul class="impl-list">${implHTML(d.impl)}</ul>
         </div>
         <div>
           <div class="sec-label">All ISO 27001 controls — ${stage}</div>
@@ -607,6 +700,10 @@ function showPanel(dd) {
         <div>
           <div class="sec-label">Stage security objective</div>
           <div class="obj-text">${d.obj}</div>
+        </div>
+        <div>
+          <div class="sec-label">Implementation by user</div>
+          <ul class="impl-list">${implHTML(d.impl)}</ul>
         </div>
         <div>
           <div class="sec-label">ISO 27001 controls — ${stage}</div>
