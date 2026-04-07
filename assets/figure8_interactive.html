@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BESSY-II Experiment Techniques → NeXus Mapping</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;600&display=swap');
+
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --border: #30363d;
+    --text-primary: #e6edf3;
+    --text-secondary: #8b949e;
+    --accent: #58a6ff;
+
+    /* NeXus family colors — matching the paper */
+    --nxxas:  #4da3d4;
+    --nxxrd:  #9b59b6;
+    --nxxrf:  #27ae60;
+    --nxmpes: #e67e22;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text-primary);
+    font-family: 'IBM Plex Sans', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  header {
+    width: 100%;
+    padding: 28px 40px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .badge::before {
+    content: '';
+    display: inline-block;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+
+  h1 {
+    font-size: 22px;
+    font-weight: 600;
+    line-height: 1.3;
+    letter-spacing: -0.02em;
+  }
+
+  h1 span { color: var(--text-secondary); font-weight: 300; }
+
+  .subtitle {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+    max-width: 680px;
+  }
+
+  .layout {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 0;
+    width: 100%;
+    max-width: 1100px;
+    padding: 32px 24px;
+  }
+
+  #chart-container {
+    flex: 0 0 520px;
+    position: relative;
+  }
+
+  svg { display: block; }
+
+  /* Tooltip panel */
+  #info-panel {
+    flex: 1;
+    padding: 24px 32px;
+    min-height: 420px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .info-default {
+    color: var(--text-secondary);
+    font-size: 13px;
+    line-height: 1.7;
+    border-left: 2px solid var(--border);
+    padding-left: 16px;
+  }
+
+  .info-content { display: none; }
+  .info-content.active { display: flex; flex-direction: column; gap: 12px; }
+
+  .info-family-tag {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 3px;
+    display: inline-block;
+    width: fit-content;
+  }
+
+  .info-name {
+    font-size: 26px;
+    font-weight: 600;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+  }
+
+  .info-beamlines {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+  }
+
+  .info-count {
+    font-size: 52px;
+    font-weight: 300;
+    letter-spacing: -0.04em;
+    line-height: 1;
+  }
+
+  .info-label {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.4;
+  }
+
+  .info-nexus-link {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--accent);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.2s;
+    width: fit-content;
+  }
+  .info-nexus-link:hover { border-color: var(--accent); }
+
+  .info-desc {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.65;
+    border-left: 2px solid var(--border);
+    padding-left: 14px;
+  }
+
+  .pin-badge {
+    display: none;
+    align-items: center;
+    gap: 5px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 3px 8px;
+    width: fit-content;
+  }
+  .pin-badge::before {
+    content: '📌';
+    font-size: 10px;
+  }
+
+  .info-hint {
+    font-size: 11px;
+    color: var(--text-secondary);
+    opacity: 0.6;
+    margin-top: 4px;
+  }
+
+  /* Legend */
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 20px;
+    padding: 0 40px 28px;
+    width: 100%;
+    max-width: 1100px;
+    justify-content: flex-start;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    opacity: 0.8;
+    transition: opacity 0.2s;
+  }
+  .legend-item:hover { opacity: 1; }
+
+  .legend-dot {
+    width: 10px; height: 10px;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+
+  .legend-text {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--text-secondary);
+  }
+  .legend-text strong {
+    color: var(--text-primary);
+    font-weight: 600;
+  }
+
+  .legend-link {
+    display: inline-flex;
+    align-items: center;
+    color: var(--text-secondary);
+    opacity: 0;
+    transition: opacity 0.2s, color 0.2s;
+    text-decoration: none;
+    margin-left: 4px;
+    font-size: 12px;
+    line-height: 1;
+  }
+  .legend-item:hover .legend-link {
+    opacity: 1;
+    color: var(--accent);
+  }
+
+  /* arc hover */
+  path.arc {
+    cursor: pointer;
+    transition: opacity 0.18s;
+  }
+  path.arc:hover { opacity: 0.85; }
+  path.arc.dimmed { opacity: 0.2; }
+  path.arc.highlighted { opacity: 1; }
+
+  /* caption */
+  .caption {
+    font-size: 12px;
+    color: var(--text-secondary);
+    padding: 0 40px 32px;
+    max-width: 700px;
+    line-height: 1.6;
+  }
+  .caption strong { color: var(--text-primary); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="badge">Figure 8 · ICALEPCS 2025 · TUPD111</div>
+  <h1>BESSY-II Experiment Techniques <span>→</span> NeXus Standard Mapping</h1>
+  <p class="subtitle">
+    Mapping of current experiment techniques at BESSY-II to NeXus application definitions.
+    Numbers indicate beamlines performing a given experimental technique.
+    <strong style="color:var(--text-primary)">Hover or click any segment</strong> to explore.
+  </p>
+</header>
+
+<div class="layout">
+  <div id="chart-container">
+    <svg id="sunburst"></svg>
+  </div>
+
+  <div id="info-panel">
+    <div class="info-default">
+      ← Hover over a segment<br>to see details about the<br>NeXus application definition<br>and beamline count.
+      <p class="info-hint" style="margin-top:10px;">Click any segment to pin the info.</p>
+    </div>
+    <div class="info-content" id="info-dyn">
+      <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+        <div class="info-family-tag" id="info-tag"></div>
+        <div class="pin-badge" id="pin-badge">pinned · click to unpin</div>
+      </div>
+      <div class="info-name" id="info-name"></div>
+      <div class="info-beamlines">
+        <div class="info-count" id="info-count"></div>
+        <div class="info-label" id="info-label-text"></div>
+      </div>
+      <a class="info-nexus-link" id="info-link" href="#" target="_blank" rel="noopener"></a>
+      <div class="info-desc" id="info-desc"></div>
+    </div>
+  </div>
+</div>
+
+<div class="legend" id="legend"></div>
+
+<p class="caption">
+  <strong>Source:</strong> S. Patel et al., "Converting experiment data to NeXus application definitions at BESSY II,"
+  ICALEPCS 2025, TUPD111, pp. 758–762.
+  The inner ring shows NeXus application definition families; the outer ring shows specific experimental techniques
+  with their beamline counts in parentheses.
+</p>
+
+<script>
+// ── Data ─────────────────────────────────────────────────────────────────────
+const families = [
+  {
+    id: "NXxas",
+    label: "NXxas",
+    color: "#4da3d4",
+    nexusUrl: "https://manual.nexusformat.org/classes/applications/NXxas.html",
+    desc: "X-ray Absorption Spectroscopy application definitions. Covers XAS-based techniques including EXAFS, XANES, and time-resolved absorption measurements.",
+    children: [
+      { id: "NEXAFS", label: "NEXAFS", count: 34, desc: "Near-Edge X-ray Absorption Fine Structure — probes electronic structure and bonding at the atomic scale." },
+      { id: "EXAFS",  label: "EXAFS",  count: 13, desc: "Extended X-ray Absorption Fine Structure — determines local atomic structure around a specific element." },
+      { id: "TimeResolveAbs", label: "Time Resolve absorption", count: 8, desc: "Time-resolved X-ray absorption measurements capturing dynamic structural changes." },
+    ]
+  },
+  {
+    id: "NXxrd",
+    label: "NXxrd",
+    color: "#9b59b6",
+    nexusUrl: "https://manual.nexusformat.org/classes/contributed_definitions/NXxrd.html",
+    desc: "X-ray Diffraction application definitions. Covers powder and single-crystal diffraction techniques for crystallographic analysis.",
+    children: [
+      { id: "PowderDiffraction", label: "Powder Diffraction", count: 2, desc: "Powder X-ray diffraction for phase identification and crystal structure determination." },
+      { id: "SpinResolvePES_xrd", label: "Spin Resolve PES", count: 1, desc: "Spin-resolved photoelectron spectroscopy associated with diffraction beamlines." },
+    ]
+  },
+  {
+    id: "NXmpes",
+    label: "NXmpes",
+    color: "#e67e22",
+    nexusUrl: "https://manual.nexusformat.org/classes/applications/NXmpes.html",
+    desc: "Multi-Photon Electron Spectroscopy application definitions. Covers UPS, XPS, PEEM, NAP-XPS, and related photoemission techniques.",
+    children: [
+      { id: "UPS",           label: "UPS",              count: 9,  desc: "Ultraviolet Photoelectron Spectroscopy — probes valence band electronic structure." },
+      { id: "TimeResolvePES",label: "Time Resolve PES", count: 2,  desc: "Time-resolved photoelectron spectroscopy for dynamics studies." },
+      { id: "PEEM",          label: "PEEM",             count: 3,  desc: "PhotoEmission Electron Microscopy — spatially-resolved surface imaging." },
+      { id: "NAPXPS",        label: "NAP-XPS",          count: 3,  desc: "Near-Ambient Pressure XPS — photoelectron spectroscopy under near-ambient gas conditions." },
+      { id: "XPS",           label: "XPS",              count: 17, desc: "X-ray Photoelectron Spectroscopy — elemental and chemical state analysis of surfaces." },
+    ]
+  },
+  {
+    id: "NXxrf",
+    label: "NXxrf",
+    color: "#27ae60",
+    nexusUrl: "https://manual.nexusformat.org/classes/applications/NXfluo.html",
+    desc: "X-ray Fluorescence application definitions. Covers XRF mapping and fluorescence imaging for elemental distribution analysis.",
+    children: [
+      { id: "XRF",               label: "XRF",               count: 10, desc: "X-ray Fluorescence — non-destructive elemental analysis by detecting characteristic fluorescence." },
+      { id: "FluorescenceImaging", label: "Fluorescence imaging", count: 2, desc: "Spatially-resolved fluorescence imaging for 2D elemental mapping." },
+      { id: "XRFmapping",        label: "XRF mapping",        count: 4,  desc: "Scanning X-ray fluorescence mapping — generates 2D elemental distribution maps." },
+    ]
+  },
+];
+
+// ── Layout constants ──────────────────────────────────────────────────────────
+const W = 520, H = 520, cx = W / 2, cy = H / 2;
+const innerR = 90, midR = 195, outerR = 245;
+const TAU = 2 * Math.PI;
+
+// Compute total beamlines per family and grand total
+families.forEach(f => { f.total = f.children.reduce((s, c) => s + c.count, 0); });
+const grand = families.reduce((s, f) => s + f.total, 0);
+
+// Build arc data
+const familyArcs = [], techArcs = [];
+let angle = -Math.PI / 2; // start at top
+
+families.forEach(fam => {
+  const fSpan = (fam.total / grand) * TAU;
+  familyArcs.push({ ...fam, a0: angle, a1: angle + fSpan });
+
+  let techAngle = angle;
+  fam.children.forEach(ch => {
+    const cSpan = (ch.count / grand) * TAU;
+    techArcs.push({ ...ch, family: fam, a0: techAngle, a1: techAngle + cSpan, color: lighten(fam.color, ch) });
+    techAngle += cSpan;
+  });
+
+  angle += fSpan;
+});
+
+function lighten(hex, ch) {
+  // give each child a slightly varied shade
+  return hex;
+}
+
+// Distinct shades for children
+const shadeSets = {
+  NXxas:  ["#4da3d4", "#2980b9", "#1a6ea8"],
+  NXxrd:  ["#9b59b6", "#7d3c98"],
+  NXmpes: ["#e67e22", "#d35400", "#f39c12", "#e59866", "#ca8a3c"],
+  NXxrf:  ["#27ae60", "#1e8449", "#16a085"],
+};
+
+// Re-assign colors
+families.forEach(fam => {
+  const shades = shadeSets[fam.id] || [];
+  fam.children.forEach((ch, i) => {
+    ch.color = shades[i % shades.length] || fam.color;
+  });
+});
+techArcs.forEach(t => { t.color = t.family.children.find(c => c.id === t.id)?.color || t.family.color; });
+
+// ── D3 rendering ──────────────────────────────────────────────────────────────
+const svg = d3.select("#sunburst")
+  .attr("width", W).attr("height", H)
+  .attr("viewBox", `0 0 ${W} ${H}`);
+
+const arc = d3.arc();
+
+// Center label
+const centerG = svg.append("g").attr("transform", `translate(${cx},${cy})`);
+centerG.append("circle").attr("r", innerR - 2).attr("fill", "#161b22");
+const centerLabel = centerG.append("text")
+  .attr("text-anchor", "middle")
+  .attr("dy", "0.35em")
+  .style("font-family", "IBM Plex Mono, monospace")
+  .style("font-size", "13px")
+  .style("fill", "#8b949e")
+  .text("BESSY-II");
+
+// Draw family (inner) arcs
+const famG = svg.append("g").attr("transform", `translate(${cx},${cy})`);
+famG.selectAll("path")
+  .data(familyArcs)
+  .join("path")
+    .attr("class", "arc family-arc")
+    .attr("d", d => arc({ innerRadius: innerR, outerRadius: midR - 3, startAngle: d.a0, endAngle: d.a1 }))
+    .attr("fill", d => d.color)
+    .attr("stroke", "#0d1117")
+    .attr("stroke-width", 2)
+    .on("mouseenter", (ev, d) => onHoverFamily(d))
+    .on("mouseleave", onLeave)
+    .on("click", (ev, d) => onClickFamily(d));
+
+// Family labels
+famG.selectAll("text.fam-label")
+  .data(familyArcs)
+  .join("text")
+    .attr("class", "fam-label")
+    .attr("transform", d => {
+      const mid = (d.a0 + d.a1) / 2;
+      const r = (innerR + midR - 3) / 2;
+      return `translate(${Math.sin(mid) * r},${-Math.cos(mid) * r})`;
+    })
+    .attr("text-anchor", "middle")
+    .attr("dy", "0.35em")
+    .style("font-family", "IBM Plex Sans, sans-serif")
+    .style("font-weight", "600")
+    .style("font-size", d => {
+      const span = d.a1 - d.a0;
+      return span > 1.2 ? "13px" : span > 0.5 ? "11px" : "9px";
+    })
+    .style("fill", "#fff")
+    .style("pointer-events", "none")
+    .text(d => d.label);
+
+// Draw tech (outer) arcs
+const techG = svg.append("g").attr("transform", `translate(${cx},${cy})`);
+techG.selectAll("path")
+  .data(techArcs)
+  .join("path")
+    .attr("class", "arc tech-arc")
+    .attr("d", d => arc({ innerRadius: midR + 1, outerRadius: outerR, startAngle: d.a0, endAngle: d.a1 }))
+    .attr("fill", d => d.color)
+    .attr("stroke", "#0d1117")
+    .attr("stroke-width", 1.5)
+    .on("mouseenter", (ev, d) => onHoverTech(d))
+    .on("mouseleave", onLeave)
+    .on("click", (ev, d) => onClickTech(d));
+
+// Tech labels — positioned at arc midpoint, rotated tangentially
+techArcs.forEach(d => {
+  const span = d.a1 - d.a0;
+  if (span < 0.12) return;
+
+  const mid = (d.a0 + d.a1) / 2;
+  const r = (midR + 1 + outerR) / 2;
+
+  // Convert from "start at top, clockwise" to standard math angle
+  // a0/a1 use svg arc convention: 0 = top, clockwise
+  // For x,y: x = sin(a), y = -cos(a)
+  const px = Math.sin(mid) * r;
+  const py = -Math.cos(mid) * r;
+
+  // Rotation: text should be tangent to the arc
+  // The angle of the tangent at mid: atan2(py, px) in degrees + 90
+  let rotateDeg = (mid * 180 / Math.PI);
+  // Flip text if it would be upside down (right side of circle)
+  if (mid > Math.PI) rotateDeg += 180;
+
+  const txt = techG.append("text")
+    .attr("transform", `translate(${px},${py}) rotate(${rotateDeg})`)
+    .attr("text-anchor", "middle")
+    .attr("dominant-baseline", "central")
+    .style("font-family", "IBM Plex Sans, sans-serif")
+    .style("font-size", span > 0.45 ? "10px" : "8.5px")
+    .style("fill", "#fff")
+    .style("pointer-events", "none");
+
+  if (span > 0.38) {
+    txt.append("tspan").attr("x", 0).attr("dy", "-0.55em").text(d.label);
+    txt.append("tspan").attr("x", 0).attr("dy", "1.15em").style("opacity", "0.75").text(`(${d.count})`);
+  } else {
+    txt.text(`${d.label} (${d.count})`);
+  }
+});
+
+// ── Info panel interactions ───────────────────────────────────────────────────
+let pinned = null; // id of the pinned datum, or null
+
+function highlight(familyId, techId) {
+  d3.selectAll("path.arc").classed("dimmed", true).classed("highlighted", false);
+  d3.selectAll("path.family-arc").filter(a => a.id === familyId)
+    .classed("highlighted", true).classed("dimmed", false);
+  d3.selectAll("path.tech-arc").filter(a => techId ? a.id === techId : a.family.id === familyId)
+    .classed("highlighted", true).classed("dimmed", false);
+}
+
+function clearHighlight() {
+  d3.selectAll("path.arc").classed("dimmed", false).classed("highlighted", false);
+  centerLabel.text("BESSY-II");
+  document.querySelector(".info-default").style.display = "block";
+  document.getElementById("info-dyn").classList.remove("active");
+  document.getElementById("pin-badge").style.display = "none";
+}
+
+function onHoverFamily(d) {
+  if (pinned) return;
+  highlight(d.id, null);
+  centerLabel.text(d.label);
+  showPanel({ tag: "NeXus Family", tagColor: d.color, name: d.label,
+    count: d.total, labelText: `beamlines total\nacross ${d.children.length} technique${d.children.length > 1?"s":""}`,
+    link: d.nexusUrl, linkText: `→ NeXus docs: ${d.id}`, desc: d.desc, isPinned: false });
+}
+
+function onHoverTech(d) {
+  if (pinned) return;
+  highlight(d.family.id, d.id);
+  centerLabel.text(d.count);
+  showPanel({ tag: d.family.label, tagColor: d.family.color, name: d.label,
+    count: d.count, labelText: `beamlines\n(${((d.count/grand)*100).toFixed(1)}% of all)`,
+    link: d.family.nexusUrl, linkText: `→ NeXus docs: ${d.family.id}`, desc: d.desc, isPinned: false });
+}
+
+function onClickFamily(d) {
+  if (pinned === d.id) {
+    // clicking the already-pinned segment → unpin
+    pinned = null;
+    clearHighlight();
+  } else {
+    // pin this segment
+    pinned = d.id;
+    highlight(d.id, null);
+    centerLabel.text(d.label);
+    showPanel({ tag: "NeXus Family", tagColor: d.color, name: d.label,
+      count: d.total, labelText: `beamlines total\nacross ${d.children.length} technique${d.children.length > 1?"s":""}`,
+      link: d.nexusUrl, linkText: `→ NeXus docs: ${d.id}`, desc: d.desc, isPinned: true });
+  }
+}
+
+function onClickTech(d) {
+  if (pinned === d.id) {
+    pinned = null;
+    clearHighlight();
+  } else {
+    pinned = d.id;
+    highlight(d.family.id, d.id);
+    centerLabel.text(d.count);
+    showPanel({ tag: d.family.label, tagColor: d.family.color, name: d.label,
+      count: d.count, labelText: `beamlines\n(${((d.count/grand)*100).toFixed(1)}% of all)`,
+      link: d.family.nexusUrl, linkText: `→ NeXus docs: ${d.family.id}`, desc: d.desc, isPinned: true });
+  }
+}
+
+function onLeave() {
+  if (pinned) return; // don't clear if pinned
+  clearHighlight();
+}
+
+function showPanel({ tag, tagColor, name, count, labelText, link, linkText, desc, isPinned }) {
+  document.querySelector(".info-default").style.display = "none";
+  document.getElementById("info-dyn").classList.add("active");
+
+  const tagEl = document.getElementById("info-tag");
+  tagEl.textContent = tag;
+  tagEl.style.background = tagColor + "28";
+  tagEl.style.color = tagColor;
+  tagEl.style.border = `1px solid ${tagColor}55`;
+
+  document.getElementById("info-name").textContent = name;
+  document.getElementById("info-count").textContent = count;
+  document.getElementById("info-count").style.color = tagColor;
+  document.getElementById("info-label-text").innerHTML = labelText.replace("\n", "<br>");
+  document.getElementById("info-link").href = link;
+  document.getElementById("info-link").textContent = linkText;
+  document.getElementById("info-desc").textContent = desc;
+  document.getElementById("pin-badge").style.display = isPinned ? "inline-flex" : "none";
+}
+
+// ── Unpin on Escape or clicking the SVG background ───────────────────────────
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape" && pinned) { pinned = null; clearHighlight(); }
+});
+
+svg.on("click", (ev) => {
+  if (ev.target.tagName === "svg" && pinned) { pinned = null; clearHighlight(); }
+});
+
+// ── Legend ────────────────────────────────────────────────────────────────────
+const legendEl = document.getElementById("legend");
+families.forEach(fam => {
+  const item = document.createElement("div");
+  item.className = "legend-item";
+  item.innerHTML = `
+    <div class="legend-dot" style="background:${fam.color}"></div>
+    <div class="legend-text"><strong>${fam.label}</strong> · ${fam.total} beamlines</div>
+    <a class="legend-link" href="${fam.nexusUrl}" target="_blank" rel="noopener" title="Open NeXus docs for ${fam.label}" onclick="event.stopPropagation()">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+        <polyline points="15 3 21 3 21 9"/>
+        <line x1="10" y1="14" x2="21" y2="3"/>
+      </svg>
+    </a>
+  `;
+  item.addEventListener("mouseenter", () => onHoverFamily(fam));
+  item.addEventListener("mouseleave", onLeave);
+  item.addEventListener("click", () => onClickFamily(fam));
+  legendEl.appendChild(item);
+});
+</script>
+</body>
+</html>

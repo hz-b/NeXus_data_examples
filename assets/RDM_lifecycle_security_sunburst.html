@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>RDM Lifecycle — Security Framework Mapping</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #f4f5f7;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 16px 40px;
+    color: #222;
+  }
+
+  header {
+    width: 100%;
+    max-width: 1160px;
+    margin-bottom: 20px;
+    text-align: center;
+  }
+
+  header h1 {
+    font-size: 20px;
+    font-weight: 500;
+    color: #1a1a2e;
+    margin-bottom: 4px;
+  }
+
+  header p {
+    font-size: 12.5px;
+    color: #888;
+  }
+
+  .layout {
+    display: flex;
+    gap: 24px;
+    align-items: flex-start;
+    width: 100%;
+    max-width: 1160px;
+    justify-content: center;
+  }
+
+  #chart-wrap { flex: 0 0 auto; }
+
+  svg { display: block; }
+
+  /* ── Info panel ── */
+  #panel {
+    flex: 1;
+    min-width: 270px;
+    max-width: 390px;
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.07);
+    align-self: flex-start;
+    margin-top: 28px;
+  }
+
+  .p-head {
+    padding: 13px 16px 11px;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .p-dot {
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    margin-top: 3px;
+  }
+
+  .p-title { font-size: 14.5px; font-weight: 600; color: #111; line-height: 1.3; }
+  .p-sub   { font-size: 11.5px; color: #888; margin-top: 3px; }
+
+  .p-body {
+    padding: 13px 16px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 13px;
+    max-height: 74vh;
+    overflow-y: auto;
+  }
+  .p-body::-webkit-scrollbar { width: 4px; }
+  .p-body::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 2px; }
+  .p-body::-webkit-scrollbar-thumb { background: #ddd; border-radius: 2px; }
+
+  .sec-label {
+    font-size: 10.5px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: #aaa;
+    margin-bottom: 5px;
+  }
+
+  .obj-text {
+    font-size: 12.5px;
+    color: #555;
+    line-height: 1.6;
+  }
+
+  .ctrl-list { list-style: none; display: flex; flex-direction: column; gap: 4px; }
+
+  .ctrl-item {
+    font-size: 12px;
+    padding: 5px 9px;
+    background: #f7f8fa;
+    border-radius: 6px;
+    color: #333;
+    line-height: 1.4;
+  }
+
+  .ctrl-item.highlighted {
+    font-weight: 600;
+    border-left: 3px solid currentColor;
+  }
+
+  .impl-list { list-style: none; display: flex; flex-direction: column; gap: 4px; }
+
+  .impl-item {
+    font-size: 12px;
+    padding: 5px 9px 5px 22px;
+    background: #f7f8fa;
+    border-radius: 6px;
+    color: #444;
+    line-height: 1.5;
+    position: relative;
+  }
+
+  .impl-item::before {
+    content: "›";
+    position: absolute;
+    left: 8px;
+    top: 5px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #bbb;
+  }
+
+  .hint {
+    padding: 32px 20px;
+    text-align: center;
+    color: #bbb;
+    font-size: 12.5px;
+    line-height: 1.8;
+  }
+
+  .esc-note {
+    font-size: 10.5px;
+    color: #ccc;
+    text-align: center;
+    margin-top: 6px;
+  }
+
+  kbd {
+    background: #eee;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    padding: 1px 5px;
+    font-size: 10px;
+    font-family: monospace;
+  }
+
+  .seg { cursor: pointer; }
+  .seg:hover { opacity: 0.83; }
+
+  /* ring legend */
+  .legend {
+    display: flex;
+    gap: 18px;
+    justify-content: center;
+    margin-top: 10px;
+  }
+  .legend-item {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 11.5px; color: #666;
+  }
+  .legend-swatch {
+    width: 28px; height: 10px; border-radius: 3px;
+  }
+
+  footer {
+    margin-top: 28px;
+    font-size: 11px;
+    color: #bbb;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Research Data Management Lifecycle — Security Framework Mapping</h1>
+  <p>Click any segment to pin security details · inner ring = lifecycle stage · middle ring = ISO 27001 · outer ring = NIST</p>
+</header>
+
+<div class="layout">
+  <div id="chart-wrap">
+    <svg id="sun"></svg>
+    <div class="legend">
+      <div class="legend-item"><div class="legend-swatch" style="background:#aaa;opacity:0.45"></div><span>ISO 27001 (middle)</span></div>
+      <div class="legend-item"><div class="legend-swatch" style="background:#aaa;opacity:0.75"></div><span>NIST (outer)</span></div>
+    </div>
+  </div>
+
+  <div id="panel">
+    <div class="hint">
+      📌 Click any segment to pin its security details here.<br><br>
+      <strong>Inner</strong> = lifecycle stage<br>
+      <strong>Middle</strong> = ISO 27001 controls<br>
+      <strong>Outer</strong> = NIST controls
+    </div>
+  </div>
+</div>
+
+<footer>Source: NIST SP 800-53 &nbsp;·&nbsp; ISO/IEC 27001:2022 &nbsp;·&nbsp; RDM Lifecycle Security Framework</footer>
+
+<script>
+// ═══════════════════════════════════════════════════════
+// DATA
+// ═══════════════════════════════════════════════════════
+const DATA = {
+  Plan: {
+    color: "#7F77DD",
+    obj: "Establish governance, risk assessment, and policies before data is created or collected.",
+    impl: [
+      "Prepare a Data Management Plan (DMP) specifying storage, access control, sharing policy, and preservation strategy.",
+      "Classify the data according to sensitivity (public, restricted, confidential, personal data).",
+      "Define roles and permissions for project members who will access or manage data.",
+      "Conduct a risk assessment to identify potential security threats to research data.",
+      "Ensure compliance with institutional, legal, and ethical regulations (GDPR, funder policies, etc.)."
+    ],
+    iso: [
+      { code: "A.5",  name: "Information Security Policies" },
+      { code: "A.6",  name: "Organization of Information Security" },
+      { code: "A.8",  name: "Asset Management (data classification)" },
+      { code: "A.18", name: "Compliance" }
+    ],
+    nist: [
+      { code: "PL-2",  name: "System Security and Privacy Plans" },
+      { code: "RA-2",  name: "Security Categorization" },
+      { code: "RA-3",  name: "Risk Assessment" },
+      { code: "PM-1",  name: "Information Security Program Plan" }
+    ]
+  },
+  Collect: {
+    color: "#1D9E75",
+    obj: "Ensure secure and trustworthy acquisition of research data.",
+    impl: [
+      "Use authenticated and trusted instruments, sensors, or data acquisition systems.",
+      "Transfer collected data using encrypted communication protocols (TLS, SSH, VPN).",
+      "Assign metadata and unique identifiers to collected datasets.",
+      "Perform integrity checks using checksums or hashes to detect tampering.",
+      "Restrict access to collection systems and devices."
+    ],
+    iso: [
+      { code: "A.9",  name: "Access Control" },
+      { code: "A.10", name: "Cryptography" },
+      { code: "A.11", name: "Physical and Environmental Security" },
+      { code: "A.12", name: "Operations Security" }
+    ],
+    nist: [
+      { code: "SC-8",  name: "Transmission Confidentiality and Integrity" },
+      { code: "IA-2",  name: "Identification and Authentication" },
+      { code: "SI-7",  name: "Software and Information Integrity" },
+      { code: "MP-4",  name: "Media Transport" }
+    ]
+  },
+  Process: {
+    color: "#D85A30",
+    obj: "Protect data while being transformed, cleaned, or prepared for analysis.",
+    impl: [
+      "Store working datasets in secured environments with controlled access.",
+      "Encrypt temporary or intermediate files containing sensitive data.",
+      "Apply anonymization or pseudonymization if personal or sensitive data is involved.",
+      "Maintain version control of processed datasets.",
+      "Ensure processing systems are patched and configured securely."
+    ],
+    iso: [
+      { code: "A.9",  name: "Access Control" },
+      { code: "A.10", name: "Cryptography" },
+      { code: "A.12", name: "Operations Security" },
+      { code: "A.14", name: "Secure System Development and Maintenance" }
+    ],
+    nist: [
+      { code: "AC-2",  name: "Account Management" },
+      { code: "AC-6",  name: "Least Privilege" },
+      { code: "SC-13", name: "Cryptographic Protection" },
+      { code: "CM-2",  name: "Baseline Configuration" }
+    ]
+  },
+  Analyse: {
+    color: "#C0407A",
+    obj: "Ensure secure analysis environments and maintain traceability of research results.",
+    impl: [
+      "Conduct analysis in controlled computing environments (secure servers, HPC clusters, containers).",
+      "Restrict user privileges according to research roles.",
+      "Maintain audit logs for analysis workflows and data access.",
+      "Use secure version control systems (e.g., Git repositories with authentication).",
+      "Validate analysis tools and software to avoid malicious code or vulnerabilities."
+    ],
+    iso: [
+      { code: "A.12", name: "Operations Security (logging and monitoring)" },
+      { code: "A.9",  name: "Access Control" },
+      { code: "A.14", name: "Secure Development and Maintenance" },
+      { code: "A.16", name: "Incident Management" }
+    ],
+    nist: [
+      { code: "AU-2",  name: "Audit Events" },
+      { code: "AU-6",  name: "Audit Review and Analysis" },
+      { code: "SI-4",  name: "System Monitoring" },
+      { code: "AC-6",  name: "Least Privilege" }
+    ]
+  },
+  Preserve: {
+    color: "#B07010",
+    obj: "Ensure long-term integrity, confidentiality, and availability of research data.",
+    impl: [
+      "Store research data in certified or trusted repositories.",
+      "Implement regular automated backups in geographically separate locations.",
+      "Encrypt archived datasets and manage encryption keys securely.",
+      "Perform periodic integrity checks using checksums.",
+      "Maintain metadata and documentation for long-term accessibility."
+    ],
+    iso: [
+      { code: "A.8",  name: "Asset Management" },
+      { code: "A.10", name: "Cryptography" },
+      { code: "A.12", name: "Operations Security (backup procedures)" },
+      { code: "A.17", name: "Business Continuity" }
+    ],
+    nist: [
+      { code: "CP-9",  name: "System Backup" },
+      { code: "SC-28", name: "Protection of Information at Rest" },
+      { code: "MP-6",  name: "Media Sanitization" },
+      { code: "SC-12", name: "Cryptographic Key Establishment and Management" }
+    ]
+  },
+  Share: {
+    color: "#2878CC",
+    obj: "Enable controlled dissemination of research data while protecting sensitive information.",
+    impl: [
+      "Publish datasets in trusted repositories with defined access controls.",
+      "Define licensing conditions for dataset reuse (e.g., Creative Commons).",
+      "Authenticate users accessing shared datasets.",
+      "Use encrypted channels when distributing data.",
+      "Ensure sensitive information is removed or anonymized before sharing."
+    ],
+    iso: [
+      { code: "A.9",  name: "Access Control" },
+      { code: "A.13", name: "Communications Security" },
+      { code: "A.7",  name: "Supplier Relationships" },
+      { code: "A.18", name: "Compliance" }
+    ],
+    nist: [
+      { code: "AC-17", name: "Remote Access" },
+      { code: "AC-20", name: "Use of External Systems" },
+      { code: "IA-2",  name: "Identification and Authentication" },
+      { code: "SC-8",  name: "Secure Communications" }
+    ]
+  },
+  Reuse: {
+    color: "#4A8A1A",
+    obj: "Ensure reused datasets maintain integrity, provenance, and legal compliance.",
+    impl: [
+      "Verify dataset integrity using checksums or digital signatures before reuse.",
+      "Review metadata and provenance information to understand dataset origin.",
+      "Respect licensing, ethical, and regulatory constraints of the original dataset.",
+      "Track modifications and maintain version history when reusing datasets.",
+      "Document new analyses performed on reused data."
+    ],
+    iso: [
+      { code: "A.8",  name: "Asset Management" },
+      { code: "A.9",  name: "Access Control" },
+      { code: "A.12", name: "Operations Security" },
+      { code: "A.18", name: "Compliance" }
+    ],
+    nist: [
+      { code: "AU-10", name: "Non-repudiation" },
+      { code: "CM-3",  name: "Configuration Change Control" },
+      { code: "RA-3",  name: "Risk Assessment" },
+      { code: "SA-10", name: "Developer Configuration Management" }
+    ]
+  }
+};
+
+// ═══════════════════════════════════════════════════════
+// GEOMETRY
+// ═══════════════════════════════════════════════════════
+const stages = Object.keys(DATA);
+const n = stages.length;
+
+// Wider chart to fit two-line outer labels
+const W = 680, H = 680, cx = W/2, cy = H/2;
+const R0 = 52;    // center hole
+const R1 = 118;   // inner ring outer edge
+const R2 = 215;   // ISO ring outer edge
+const R3 = 310;   // NIST ring outer edge
+const GAP_STAGE = 0.022;
+const GAP_SUB   = 0.010;
+const PI2 = Math.PI * 2;
+const startAngle = -Math.PI / 2;
+const anglePerStage = (PI2 - GAP_STAGE * n) / n;
+
+const svg = d3.select("#sun").attr("width", W).attr("height", H);
+const g = svg.append("g").attr("transform", `translate(${cx},${cy})`);
+
+const mkArc = (r0, r1) => (sa, ea) =>
+  d3.arc()({ innerRadius: r0, outerRadius: r1, startAngle: sa, endAngle: ea });
+
+const aInner  = mkArc(R0,    R1);
+const aISO    = mkArc(R1+2,  R2);
+const aISO_E  = mkArc(R1+2,  R2+11);
+const aNIST   = mkArc(R2+2,  R3);
+const aNIST_E = mkArc(R2+2,  R3+11);
+
+// ═══════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════
+let pinnedEl = null, pinnedMeta = null;
+
+function lighten(hex, amt) {
+  try { return d3.color(hex).brighter(amt).toString(); } catch(e) { return hex; }
+}
+
+// ═══════════════════════════════════════════════════════
+// LABEL HELPER — two lines on curved arc
+// ═══════════════════════════════════════════════════════
+function arcLabel(midAngle, r, line1, line2, fontSize, fillColor) {
+  const lx = Math.sin(midAngle) * r;
+  const ly = -Math.cos(midAngle) * r;
+  const stdA = (midAngle + Math.PI/2) * 180 / Math.PI;
+  const onLeft = Math.cos(midAngle) < 0;
+  const rot = onLeft ? stdA + 180 : stdA;
+
+  const grp = g.append("g")
+    .attr("pointer-events","none")
+    .attr("transform", `translate(${lx},${ly}) rotate(${rot})`);
+
+  if (line2) {
+    grp.append("text")
+      .attr("text-anchor","middle").attr("dominant-baseline","middle")
+      .attr("font-size", fontSize).attr("fill", fillColor)
+      .attr("y", -5.5).text(line1);
+    grp.append("text")
+      .attr("text-anchor","middle").attr("dominant-baseline","middle")
+      .attr("font-size", Math.max(parseFloat(fontSize)-0.5, 7) + "px").attr("fill", fillColor)
+      .attr("y", 5.5).text(line2);
+  } else {
+    grp.append("text")
+      .attr("text-anchor","middle").attr("dominant-baseline","middle")
+      .attr("font-size", fontSize).attr("fill", fillColor)
+      .text(line1);
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// DRAW
+// ═══════════════════════════════════════════════════════
+stages.forEach((stage, i) => {
+  const d = DATA[stage];
+  const sa = startAngle + i * (anglePerStage + GAP_STAGE);
+  const ea = sa + anglePerStage;
+  const mid = (sa + ea) / 2;
+
+  const isoFill  = lighten(d.color, 0.70);
+  const nistFill = lighten(d.color, 0.32);
+
+  // ── ISO 27001 ring ──
+  const isoN = d.iso.length;
+  const isoSlice = anglePerStage / isoN;
+
+  d.iso.forEach((ctrl, j) => {
+    const ssa = sa + j * isoSlice;
+    const sea = ssa + isoSlice - GAP_SUB;
+    const smid = (ssa + sea) / 2;
+    const span = sea - ssa;
+
+    const el = g.append("path")
+      .datum({ stage, ctrl, layer:"iso", ssa, sea })
+      .attr("class","seg")
+      .attr("d", aISO(ssa, sea))
+      .attr("fill", isoFill)
+      .attr("stroke","#f4f5f7").attr("stroke-width", 0.8)
+      .on("mouseenter", function(e,dd) { if(pinnedEl!==this) d3.select(this).attr("d", aISO_E(dd.ssa, dd.sea)); })
+      .on("mouseleave", function(e,dd) { if(pinnedEl!==this) d3.select(this).attr("d", aISO(dd.ssa, dd.sea)); })
+      .on("click", function(e,dd) {
+        e.stopPropagation();
+        if(pinnedEl===this){ unpinAll(); return; }
+        unpinAll();
+        pinnedEl = this;
+        pinnedMeta = dd;
+        d3.select(this).attr("d", aISO_E(dd.ssa, dd.sea)).attr("stroke","#fff").attr("stroke-width",1.8);
+        showPanel(dd);
+      });
+
+    // Two-line label: code on line 1, truncated name on line 2
+    if (span > 0.13) {
+      const lr = (R1+2 + R2) / 2 + 4;
+      const nameTrunc = ctrl.name.length > 20 ? ctrl.name.slice(0,18)+'…' : ctrl.name;
+      const fs = span > 0.22 ? "9px" : "8.5px";
+      arcLabel(smid, lr, ctrl.code, nameTrunc, fs, "rgba(0,0,0,0.72)");
+    } else if (span > 0.065) {
+      const lr = (R1+2 + R2) / 2 + 4;
+      arcLabel(smid, lr, ctrl.code, null, "8.5px", "rgba(0,0,0,0.72)");
+    }
+  });
+
+  // ── NIST ring ──
+  const nistN = d.nist.length;
+  const nistSlice = anglePerStage / nistN;
+
+  d.nist.forEach((ctrl, j) => {
+    const ssa = sa + j * nistSlice;
+    const sea = ssa + nistSlice - GAP_SUB;
+    const smid = (ssa + sea) / 2;
+    const span = sea - ssa;
+
+    g.append("path")
+      .datum({ stage, ctrl, layer:"nist", ssa, sea })
+      .attr("class","seg")
+      .attr("d", aNIST(ssa, sea))
+      .attr("fill", nistFill)
+      .attr("stroke","#f4f5f7").attr("stroke-width", 0.8)
+      .on("mouseenter", function(e,dd) { if(pinnedEl!==this) d3.select(this).attr("d", aNIST_E(dd.ssa, dd.sea)); })
+      .on("mouseleave", function(e,dd) { if(pinnedEl!==this) d3.select(this).attr("d", aNIST(dd.ssa, dd.sea)); })
+      .on("click", function(e,dd) {
+        e.stopPropagation();
+        if(pinnedEl===this){ unpinAll(); return; }
+        unpinAll();
+        pinnedEl = this;
+        pinnedMeta = dd;
+        d3.select(this).attr("d", aNIST_E(dd.ssa, dd.sea)).attr("stroke","#fff").attr("stroke-width",1.8);
+        showPanel(dd);
+      });
+
+    // Two-line label: code + name
+    if (span > 0.13) {
+      const lr = (R2+2 + R3) / 2 + 4;
+      const nameTrunc = ctrl.name.length > 22 ? ctrl.name.slice(0,20)+'…' : ctrl.name;
+      const fs = span > 0.22 ? "9px" : "8.5px";
+      arcLabel(smid, lr, ctrl.code, nameTrunc, fs, "rgba(0,0,0,0.78)");
+    } else if (span > 0.065) {
+      const lr = (R2+2 + R3) / 2 + 4;
+      arcLabel(smid, lr, ctrl.code, null, "8.5px", "rgba(0,0,0,0.78)");
+    }
+  });
+
+  // ── Inner stage ring ──
+  g.append("path")
+    .datum({ stage, layer:"stage", ssa: sa, sea: ea })
+    .attr("class","seg")
+    .attr("d", aInner(sa, ea))
+    .attr("fill", d.color)
+    .attr("stroke","#f4f5f7").attr("stroke-width", 0.8)
+    .on("mouseenter", function() { if(pinnedEl!==this) d3.select(this).attr("opacity",0.80); })
+    .on("mouseleave", function() { if(pinnedEl!==this) d3.select(this).attr("opacity",1); })
+    .on("click", function(e,dd) {
+      e.stopPropagation();
+      if(pinnedEl===this){ unpinAll(); return; }
+      unpinAll();
+      pinnedEl = this;
+      pinnedMeta = dd;
+      d3.select(this).attr("stroke","#fff").attr("stroke-width",1.8);
+      showPanel(dd);
+    });
+
+  // Stage label — bold white, one line
+  const lr = (R0 + R1) / 2;
+  arcLabel(mid, lr, stage, null, "11.5px", "#fff");
+});
+
+// ── Centre ──
+g.append("circle").attr("r", R0-1).attr("fill","#fff").attr("stroke","#e0e0e0").attr("stroke-width","0.8");
+g.append("text").attr("text-anchor","middle").attr("y",-8)
+  .attr("font-size","12px").attr("font-weight","600").attr("fill","#444").text("RDM");
+g.append("text").attr("text-anchor","middle").attr("y",8)
+  .attr("font-size","10px").attr("fill","#888").text("Lifecycle");
+
+// ── Ring ring-boundary labels (top, subtle) ──
+[{ r: (R1+2+R2)/2, txt:"ISO 27001" }, { r: (R2+2+R3)/2, txt:"NIST" }].forEach(rl => {
+  g.append("text").attr("text-anchor","middle").attr("x",0).attr("y",-(rl.r))
+    .attr("font-size","8.5px").attr("fill","rgba(0,0,0,0.35)").attr("pointer-events","none")
+    .text(rl.txt);
+});
+
+// ═══════════════════════════════════════════════════════
+// PANEL LOGIC
+// ═══════════════════════════════════════════════════════
+const panel = document.getElementById("panel");
+
+function unpinAll() {
+  if (pinnedEl && pinnedMeta) {
+    const dd = pinnedMeta;
+    if (dd.layer === "iso")   d3.select(pinnedEl).attr("d", aISO(dd.ssa, dd.sea)).attr("stroke","#f4f5f7").attr("stroke-width",0.8);
+    else if (dd.layer === "nist") d3.select(pinnedEl).attr("d", aNIST(dd.ssa, dd.sea)).attr("stroke","#f4f5f7").attr("stroke-width",0.8);
+    else d3.select(pinnedEl).attr("opacity",1).attr("stroke","#f4f5f7").attr("stroke-width",0.8);
+  }
+  pinnedEl = null; pinnedMeta = null;
+  panel.innerHTML = `<div class="hint">📌 Click any segment to pin its security details here.<br><br><strong>Inner</strong> = lifecycle stage<br><strong>Middle</strong> = ISO 27001 controls<br><strong>Outer</strong> = NIST controls</div>`;
+}
+
+function implHTML(list) {
+  return list.map(item => `<li class="impl-item">${item}</li>`).join('');
+}
+
+function ctrlHTML(list, highlightCode, color) {
+  return list.map(c => {
+    const hl = c.code === highlightCode;
+    return `<li class="ctrl-item${hl?' highlighted':''}" style="${hl?'color:'+color+';border-left-color:'+color+';':''}">`
+      + `<strong>${c.code}</strong> — ${c.name}</li>`;
+  }).join('');
+}
+
+function showPanel(dd) {
+  const stage = dd.stage;
+  const d = DATA[stage];
+  const color = d.color;
+  const hlight = lighten(color, 0.55);
+
+  if (dd.layer === "stage") {
+    panel.innerHTML = `
+      <div class="p-head" style="background:${color}16;border-bottom:2px solid ${color}50">
+        <div class="p-dot" style="background:${color}"></div>
+        <div>
+          <div class="p-title">${stage}</div>
+          <div class="p-sub">RDM lifecycle stage</div>
+        </div>
+      </div>
+      <div class="p-body">
+        <div>
+          <div class="sec-label">Security objective</div>
+          <div class="obj-text">${d.obj}</div>
+        </div>
+        <div>
+          <div class="sec-label">Implementation by user</div>
+          <ul class="impl-list">${implHTML(d.impl)}</ul>
+        </div>
+        <div>
+          <div class="sec-label">ISO 27001 controls</div>
+          <ul class="ctrl-list">${ctrlHTML(d.iso, null, color)}</ul>
+        </div>
+        <div>
+          <div class="sec-label">NIST controls</div>
+          <ul class="ctrl-list">${ctrlHTML(d.nist, null, color)}</ul>
+        </div>
+        <p class="esc-note">Click again or press <kbd>Esc</kbd> to unpin</p>
+      </div>`;
+
+  } else if (dd.layer === "iso") {
+    panel.innerHTML = `
+      <div class="p-head" style="background:${hlight}22;border-bottom:2px solid ${hlight}60">
+        <div class="p-dot" style="background:${hlight}"></div>
+        <div>
+          <div class="p-title">${dd.ctrl.code} — ${dd.ctrl.name}</div>
+          <div class="p-sub">ISO 27001 · ${stage} stage</div>
+        </div>
+      </div>
+      <div class="p-body">
+        <div>
+          <div class="sec-label">Stage security objective</div>
+          <div class="obj-text">${d.obj}</div>
+        </div>
+        <div>
+          <div class="sec-label">Implementation by user</div>
+          <ul class="impl-list">${implHTML(d.impl)}</ul>
+        </div>
+        <div>
+          <div class="sec-label">All ISO 27001 controls — ${stage}</div>
+          <ul class="ctrl-list">${ctrlHTML(d.iso, dd.ctrl.code, color)}</ul>
+        </div>
+        <div>
+          <div class="sec-label">NIST controls — ${stage}</div>
+          <ul class="ctrl-list">${ctrlHTML(d.nist, null, color)}</ul>
+        </div>
+        <p class="esc-note">Click again or press <kbd>Esc</kbd> to unpin</p>
+      </div>`;
+
+  } else {
+    const nistFill = lighten(color, 0.32);
+    panel.innerHTML = `
+      <div class="p-head" style="background:${nistFill}30;border-bottom:2px solid ${color}60">
+        <div class="p-dot" style="background:${color}"></div>
+        <div>
+          <div class="p-title">${dd.ctrl.code} — ${dd.ctrl.name}</div>
+          <div class="p-sub">NIST · ${stage} stage</div>
+        </div>
+      </div>
+      <div class="p-body">
+        <div>
+          <div class="sec-label">Stage security objective</div>
+          <div class="obj-text">${d.obj}</div>
+        </div>
+        <div>
+          <div class="sec-label">Implementation by user</div>
+          <ul class="impl-list">${implHTML(d.impl)}</ul>
+        </div>
+        <div>
+          <div class="sec-label">ISO 27001 controls — ${stage}</div>
+          <ul class="ctrl-list">${ctrlHTML(d.iso, null, color)}</ul>
+        </div>
+        <div>
+          <div class="sec-label">All NIST controls — ${stage}</div>
+          <ul class="ctrl-list">${ctrlHTML(d.nist, dd.ctrl.code, color)}</ul>
+        </div>
+        <p class="esc-note">Click again or press <kbd>Esc</kbd> to unpin</p>
+      </div>`;
+  }
+}
+
+svg.on("click", () => unpinAll());
+document.addEventListener("keydown", e => { if(e.key==="Escape") unpinAll(); });
+</script>
+</body>
+</html>
