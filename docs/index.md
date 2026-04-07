@@ -29,5 +29,5 @@ or press Escape to unpin.
 
 - [ICALEPCS 2025](https://github.com/hz-b/NeXus_data_examples/tree/main/2025_ICALEPCS): In this example, we convert the experiment data from mySpot beamline of BESSY II to two NeXus application definitons ([NXfluo](https://manual.nexusformat.org/classes/applications/NXfluo.html) and [NXmonopd](https://manual.nexusformat.org/classes/applications/NXmonopd.html)). The experiment includes the simultaneous measurement on the sample with two experimental techniques, fluorescence and X-ray diffraction, to correlate the occurrence of crystalline phases with the elemental distribution.
     - [Proceeding](https://proceedings.jacow.org/icalepcs2025/doi/jacow-icalepcs2025-tupd111/)
-    - [Interactive Figure 8: BESSY II techniques to NeXus mapping](https://hz-b.github.io/NeXus_data_examples/2025_ICALEPCS/interactive-figures)
+    - [Interactive Figure 8: BESSY II techniques to NeXus mapping](https://hz-b.github.io/NeXus_data_examples/2025_ICALEPCS/)
     
