@@ -22,7 +22,6 @@ pip install ewokscore silx h5py numpy pynxtools
 ```
 experiment/
 ├── 2022-09-30_scans.spec
-├── config.yaml
 ├── mca/
 │   ├── 2022-09-30_scans_00003_00001.mca
 │   ├── 2022-09-30_scans_00003_00002.mca
@@ -31,7 +30,7 @@ experiment/
 
 Important:
 
-all .mca files must be inside mca/
+all `.mca` files must be inside `mca/`directory and
 naming must follow:
 
 ```
