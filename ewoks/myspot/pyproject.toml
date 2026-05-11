@@ -1,0 +1,11 @@
+[project]
+name = "ewoks-nexus"
+version = "0.1.0"
+
+dependencies = [
+    "ewokscore",
+    "silx",
+    "h5py",
+    "numpy",
+    "pynxtools",
+]

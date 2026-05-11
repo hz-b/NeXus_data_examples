@@ -1,0 +1,64 @@
+{
+  "graph": {
+    "id": "nexus_conversion"
+  },
+
+  "nodes": [
+    {
+      "id": "spec_to_h5",
+
+      "task_type": "class",
+
+      "task_identifier": "nodes.spec_to_hdf5.SpecToHDF5Node",
+
+      "default_inputs": [
+        {
+          "name": "spec_file",
+          "value": "/home/sonal/BESSYII/beamlines/mySpot/2022_cuvette_scans/2022-09-30_scans/2022-09-30_scans.spec"
+        },
+        {
+          "name": "mca_dir",
+          "value": "/home/sonal/BESSYII/beamlines/mySpot/2022_cuvette_scans/2022-09-30_scans/mca"
+        },
+        {
+          "name": "output_h5",
+          "value": "intermediate.h5"
+        }
+      ]
+    },
+
+    {
+      "id": "h5_to_nexus",
+
+      "task_type": "class",
+
+      "task_identifier": "nodes.hdf5_to_nexus.HDF5ToNeXusNode",
+
+      "default_inputs": [
+        {
+          "name": "input_h5",
+          "value": "intermediate.h5"
+        },
+        {
+          "name": "nexus_config",
+          "value": "config.json"
+        },
+        {
+          "name": "output_nexus",
+          "value": "output.nxs"
+        }
+      ]
+    }
+  ],
+
+  "links": [
+    {
+      "source": "spec_to_h5",
+      "target": "h5_to_nexus",
+
+      "arguments": {
+        "hdf5_file": "input_h5"
+      }
+    }
+  ]
+}
