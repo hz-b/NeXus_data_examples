@@ -60,7 +60,7 @@ ewoks execute workflows/nexus_conversion.json
 ```
 If successful, you should see geneated files: `intermediate.h5` and `output.nxs`
 
-### Verify the generated files:
+### Verify the generated files
 ```
 h5ls -r output.nxs
 ```
@@ -73,6 +73,54 @@ You should see somthing like:
 /entry/instrument/detector/data
 ```
 
+### Complete NeXus structure
+```
+├── 1.1  # silx converter structure unchange
+|   ├── instrument
+|   ├── measurement
+|   ├── start_time
+|   ├── title 
+├── 2.1
+├── 3.1
+├── ...
+├── mca/
+|   ├── spectra_scans_00001
+│       ├── ENTRY_1
+│           ├── title
+|           ├── start_time
+|           ├── definition (`NXfluo`)
+|           ├── INSTRUMENT
+|               ├── SOURCE
+|                   ├── type
+|                   ├── name
+|                   ├── probe (`x-ray`)
+|               ├── monochromator
+|                   ├── wavelength
+|               ├── fluoroscence
+|                   ├── data
+|                   ├── energy
+|           ├── SAMPLE
+|           ├── MONITOR
+|           ├── data
+|               ├── energy (`/entry/instrument/fluorescence/energy`)
+|               ├── data (`entry/instrument/fluorescence/data`)
+│       ├── ENTRY_2
+│       ├── ENTRY_3
+│       ├── ...
+│   ├── spectra_scans_00002
+│   ├── spectra_scans_00003
+|   ├── ...
+├── mca_process
+|   ├── map_scans_00001
+|       ├── program
+|       ├── version
+|       ├── NOTE
+|       ├── PARAMETERS
+|       ├── DATA
+|   ├── map_scans_00002
+|   ├── map_scans_00003
+|   ├── ....
 
+```
 
 
